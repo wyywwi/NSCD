@@ -18,6 +18,6 @@ install:
 	$(MAKE) clean
 
 clean:
-	$(MAKE) -C $(KDIR) M=$(PWD) modules clean
+	$(MAKE) -C $(KDIR) M=$(PWD) clean
 	rm -rf modules.order
 	rm -f *.symvers

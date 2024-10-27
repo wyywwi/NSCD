@@ -1,8 +1,11 @@
 #include "firewall.h"
 
 static struct IPLog *logHead = NULL,*logTail = NULL;
+static struct IPLog *oldLogHead = NULL;
 static unsigned int logNum = 0;
 static DEFINE_RWLOCK(logLock);
+
+// 记录日志 TODO
 
 // 释放首部多余的日志节点 整理链表
 int rollLog(void) {
