@@ -224,3 +224,24 @@ int loadIPRule(const char *filename) {
     filp_close(file, NULL);
     return err;
 }
+
+// 删除所有规则
+void clearAllIPRules(void) {
+    struct IPRule *current, *tmp;
+
+    write_lock(&ipRuleLock);
+
+    current = ipRuleHead;
+    while (current != NULL) {
+        tmp = current;
+        ipRuleHead = current->nx; // 将头指针指向下一个规则
+        eraseConnRelated(*tmp); // 清除规则对连接的影响
+        kfree(tmp); // 释放当前规则的内存
+        current = ipRuleHead; // 更新当前指针为下一个规则
+    }
+
+    ipRuleHead = NULL; // 确保链表头为 NULL，表示已清空所有规则
+
+    write_unlock(&ipRuleLock);
+    printk(KERN_INFO "[firewall] [rules] All rules have been cleared.\n");
+}
