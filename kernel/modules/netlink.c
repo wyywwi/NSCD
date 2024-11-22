@@ -72,17 +72,17 @@ void netlink_release() {
 int sendMsgToApp(unsigned int pid, const char *msg) {
     void* mem;
     unsigned int rspLen;
-    struct KernelResponseHeader *rspH;
-    rspLen = sizeof(struct KernelResponseHeader) + strlen(msg) + 1;
+    struct nfMessageHeader *rspH;
+    rspLen = sizeof(struct nfMessageHeader) + strlen(msg) + 1;
     mem = kzalloc(rspLen, GFP_ATOMIC);
     if(mem == NULL) {
         printk(KERN_WARNING "[firewall] [netlink] sendMsgToApp kzalloc fail.\n");
         return 0;
     }
-    rspH = (struct KernelResponseHeader *)mem;
+    rspH = (struct nfMessageHeader *)mem;
     rspH->bodyTp = RSP_MSG;
     rspH->arrayLen = strlen(msg);
-    memcpy(mem+sizeof(struct KernelResponseHeader), msg, strlen(msg));
+    memcpy(mem+sizeof(struct nfMessageHeader), msg, strlen(msg));
     nlSend(pid, mem, rspLen);
     kfree(mem);
     return rspLen;
@@ -102,7 +102,7 @@ void dealWithSetAction(unsigned int action) {
 
 int dealAppMessage(unsigned int pid, void *msg, unsigned int len) {
     struct APPRequest *req;
-    struct KernelResponseHeader *rspH;
+    struct nfMessageHeader *rspH;
     void* mem;
     unsigned int rspLen = 0;
     req = (struct APPRequest *) msg;
@@ -157,8 +157,8 @@ int dealAppMessage(unsigned int pid, void *msg, unsigned int len) {
         }
         break;
     case REQ_DELIPRule:
-        rspLen = sizeof(struct KernelResponseHeader);
-        rspH = (struct KernelResponseHeader *)kzalloc(rspLen, GFP_KERNEL);
+        rspLen = sizeof(struct nfMessageHeader);
+        rspH = (struct nfMessageHeader *)kzalloc(rspLen, GFP_KERNEL);
         if(rspH == NULL) {
             printk(KERN_WARNING "[firewall] [rules] Memory allocation failed for response.\n");
             sendMsgToApp(pid, "Error: Response formation failed, but deletion may have succeeded.");
@@ -192,8 +192,8 @@ int dealAppMessage(unsigned int pid, void *msg, unsigned int len) {
         break;
 
     case REQ_DELNATRule:
-        rspLen = sizeof(struct KernelResponseHeader);
-        rspH = (struct KernelResponseHeader *)kzalloc(rspLen, GFP_KERNEL);
+        rspLen = sizeof(struct nfMessageHeader);
+        rspH = (struct nfMessageHeader *)kzalloc(rspLen, GFP_KERNEL);
         if (rspH == NULL) {
             printk(KERN_WARNING "[firewall] [NAT] Memory allocation failed for response.\n");
             sendMsgToApp(pid, "Error: Response formation failed, but deletion may have succeeded.");
@@ -249,6 +249,11 @@ int dealAppMessage(unsigned int pid, void *msg, unsigned int len) {
                 printk(KERN_INFO "[firewall] [file] IP rules successfully loaded from '%s'.\n", req->msg.filename);
             }
         }
+        break;
+
+    case REQ_CLEARIPRule:
+        clearAllIPRules();
+        rspLen = sendMsgToApp(pid, "Success: Clear all rules successfully.");
         break;
 
     default:

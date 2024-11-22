@@ -29,6 +29,10 @@ unsigned int hook_main(void *priv,struct sk_buff *skb,const struct nf_hook_state
             isLog = 1;
             addLogBySKB(action, skb);
         }
+    } else {
+        printk(KERN_DEBUG "[firewall] [netfilter] Rule not matched.\n");
+        action = (DEFAULT_ACTION==NF_ACCEPT) ? NF_ACCEPT : NF_DROP;
+        addLogBySKB(action, skb);
     }
     // 更新连接池
     if(action == NF_ACCEPT) {

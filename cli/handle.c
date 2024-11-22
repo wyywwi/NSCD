@@ -1,8 +1,8 @@
 #include "common.h"
 
-struct KernelResponse addFilterRule(char *after,char *name,char *sip,char *dip,unsigned int sport,unsigned int dport,u_int8_t proto,unsigned int log,unsigned int action) {
+struct nfMessage addFilterRule(char *after,char *name,char *sip,char *dip,unsigned int sport,unsigned int dport,u_int8_t proto,unsigned int log,unsigned int action) {
 	struct APPRequest req;
-    struct KernelResponse rsp;
+    struct nfMessage rsp;
 	// form rule
 	struct IPRule rule;
 	if(IPstr2IPint(sip,&rule.saddr,&rule.smask)!=0) {
@@ -30,9 +30,9 @@ struct KernelResponse addFilterRule(char *after,char *name,char *sip,char *dip,u
 	return exchangeMsgK(&req, sizeof(req));
 }
 
-struct KernelResponse changeFilterRule(int key, char *name,char *sip,char *dip,unsigned int sport,unsigned int dport,u_int8_t proto,unsigned int log,unsigned int action) {
+struct nfMessage changeFilterRule(int key, char *name,char *sip,char *dip,unsigned int sport,unsigned int dport,u_int8_t proto,unsigned int log,unsigned int action) {
 	struct APPRequest req;
-    struct KernelResponse rsp;
+    struct nfMessage rsp;
 	// form rule
 	struct IPRule rule;
 	if(strcmp(sip, "-1") == 0)
@@ -61,7 +61,7 @@ struct KernelResponse changeFilterRule(int key, char *name,char *sip,char *dip,u
 	return exchangeMsgK(&req, sizeof(req));
 }
 
-struct KernelResponse delFilterRule(char *name) {
+struct nfMessage del_rule(char *name) {
 	struct APPRequest req;
 	// form request
 	req.tp = REQ_DELIPRule;
@@ -70,16 +70,16 @@ struct KernelResponse delFilterRule(char *name) {
 	return exchangeMsgK(&req, sizeof(req));
 }
 
-struct KernelResponse getAllFilterRules(void) {
+struct nfMessage get_all_rules(void) {
 	struct APPRequest req;
 	// exchange msg
 	req.tp = REQ_GETAllIPRules;
 	return exchangeMsgK(&req, sizeof(req));
 }
 
-struct KernelResponse addNATRule(char *sip,char *natIP,unsigned short minport,unsigned short maxport) {
+struct nfMessage add_nat_rule(char *sip,char *natIP,unsigned short minport,unsigned short maxport) {
 	struct APPRequest req;
-	struct KernelResponse rsp;
+	struct nfMessage rsp;
 	// form rule
 	struct NATRecord rule;
 	if(IPstr2IPint(natIP,&rule.daddr,&rule.smask)!=0) {
@@ -99,9 +99,9 @@ struct KernelResponse addNATRule(char *sip,char *natIP,unsigned short minport,un
 	return exchangeMsgK(&req, sizeof(req));
 }
 
-struct KernelResponse delNATRule(int num) {
+struct nfMessage del_nat_rule(int num) {
 	struct APPRequest req;
-	struct KernelResponse rsp;
+	struct nfMessage rsp;
 	if(num < 0) {
 		rsp.code = ERROR_CODE_NO_SUCH_RULE;
 		return rsp;
@@ -112,14 +112,14 @@ struct KernelResponse delNATRule(int num) {
 	return exchangeMsgK(&req, sizeof(req));
 }
 
-struct KernelResponse getAllNATRules(void) {
+struct nfMessage get_all_nat_rules(void) {
 	struct APPRequest req;
 	// exchange msg
 	req.tp = REQ_GETNATRules;
 	return exchangeMsgK(&req, sizeof(req));
 }
 
-struct KernelResponse setDefaultAction(unsigned int action) {
+struct nfMessage set_default_action(unsigned int action) {
 	struct APPRequest req;
 	// form request
 	req.tp = REQ_SETAction;
@@ -128,7 +128,7 @@ struct KernelResponse setDefaultAction(unsigned int action) {
 	return exchangeMsgK(&req, sizeof(req));
 }
 
-struct KernelResponse getLogs(unsigned int num) {
+struct nfMessage get_logs(unsigned int num) {
 	struct APPRequest req;
 	// exchange msg
 	req.msg.num = num;
@@ -136,7 +136,7 @@ struct KernelResponse getLogs(unsigned int num) {
 	return exchangeMsgK(&req, sizeof(req));
 }
 
-struct KernelResponse getAllConns(void) {
+struct nfMessage get_connections(void) {
 	struct APPRequest req;
 	// exchange msg
 	req.tp = REQ_GETAllConns;
@@ -164,9 +164,9 @@ int isValidFilename(const char* filename) {
     return 1; // 符合所有检查条件
 }
 
-struct KernelResponse saveRulesCommand(const char* filename) {
+struct nfMessage save_rules(const char* filename) {
     struct APPRequest req;
-    struct KernelResponse rsp;
+    struct nfMessage rsp;
 
     if (!isValidFilename(filename)) {
         printf("Error: Invalid or empty filename provided.\n");
@@ -182,9 +182,9 @@ struct KernelResponse saveRulesCommand(const char* filename) {
     return rsp;
 }
 
-struct KernelResponse loadRulesCommand(const char* filename) {
+struct nfMessage load_rules(const char* filename) {
     struct APPRequest req;
-    struct KernelResponse rsp;
+    struct nfMessage rsp;
 
     if (!isValidFilename(filename)) {
         printf("Error: Invalid or empty filename provided.\n");
@@ -198,4 +198,11 @@ struct KernelResponse loadRulesCommand(const char* filename) {
 
     rsp = exchangeMsgK(&req, sizeof(req));
     return rsp;
+}
+
+struct nfMessage clear_rules(void) {
+	struct APPRequest req;
+	// exchange msg
+	req.tp = REQ_CLEARIPRule;
+	return exchangeMsgK(&req, sizeof(req));
 }

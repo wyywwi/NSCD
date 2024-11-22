@@ -63,23 +63,23 @@ int delNATRuleFromChain(int num) {
 
 // 将所有NAT规则形成Netlink回包
 void* formAllNATRules(unsigned int *len) {
-    struct KernelResponseHeader *head;
+    struct nfMessageHeader *head;
     struct NATRecord *now;
     void *mem,*p;
     unsigned int count;
     read_lock(&natRuleLock);
     for(now=natRuleHead,count=0;now!=NULL;now=now->nx,count++);
-    *len = sizeof(struct KernelResponseHeader) + sizeof(struct NATRecord)*count;
+    *len = sizeof(struct nfMessageHeader) + sizeof(struct NATRecord)*count;
     mem = kzalloc(*len, GFP_ATOMIC);
     if(mem == NULL) {
         printk(KERN_WARNING "[firewall] [nat] kzalloc fail.\n");
         read_unlock(&natRuleLock);
         return NULL;
     }
-    head = (struct KernelResponseHeader *)mem;
+    head = (struct nfMessageHeader *)mem;
     head->bodyTp = RSP_NATRules;
     head->arrayLen = count;
-    for(now=natRuleHead,p=(mem + sizeof(struct KernelResponseHeader));now!=NULL;now=now->nx,p=p+sizeof(struct NATRecord))
+    for(now=natRuleHead,p=(mem + sizeof(struct nfMessageHeader));now!=NULL;now=now->nx,p=p+sizeof(struct NATRecord))
         memcpy(p, now, sizeof(struct NATRecord));
     read_unlock(&natRuleLock);
     return mem;

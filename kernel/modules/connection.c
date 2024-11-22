@@ -170,7 +170,7 @@ unsigned short getNewNATPort(struct NATRecord rule) {
 
 // 将所有已有连接形成Netlink回包
 void* formAllConns(unsigned int *len) {
-    struct KernelResponseHeader *head;
+    struct nfMessageHeader *head;
     struct rb_node *node;
 	struct connNode *now;
 	struct ConnLog log;
@@ -180,7 +180,7 @@ void* formAllConns(unsigned int *len) {
 	// 计算总量
     for (node=rb_first(&connRoot),count=0;node;node=rb_next(node),count++); 
 	// 申请回包空间
-	*len = sizeof(struct KernelResponseHeader) + sizeof(struct ConnLog) * count;
+	*len = sizeof(struct nfMessageHeader) + sizeof(struct ConnLog) * count;
 	mem = kzalloc(*len, GFP_ATOMIC);
     if(mem == NULL) {
         printk(KERN_WARNING "[firewall] [connections] Form all connctions kzalloc fail.\n");
@@ -188,10 +188,10 @@ void* formAllConns(unsigned int *len) {
         return NULL;
     }
     // 构建回包
-    head = (struct KernelResponseHeader *)mem;
+    head = (struct nfMessageHeader *)mem;
     head->bodyTp = RSP_ConnLogs;
     head->arrayLen = count;
-    p=(mem + sizeof(struct KernelResponseHeader));
+    p=(mem + sizeof(struct nfMessageHeader));
     for (node = rb_first(&connRoot); node; node=rb_next(node),p=p+sizeof(struct ConnLog)) {
 		now = rb_entry(node, struct connNode, node);
 		log.saddr = now->key[0];

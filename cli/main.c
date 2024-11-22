@@ -1,8 +1,8 @@
 #include "contact.h"
 
 // 新增过滤规则时的用户交互
-struct KernelResponse cmdAddRule() {
-    struct KernelResponse empty = { .code = ERROR_CODE_EXIT };
+struct nfMessage add_rule() {
+    struct nfMessage empty = { .code = ERROR_CODE_EXIT };
     char after[MAX_RULENAME_LEN+1], name[MAX_RULENAME_LEN+1], saddr[25], daddr[25], sport[15], dport[15], protoS[6];
     unsigned short sportMin, sportMax, dportMin, dportMax;
     unsigned int action = NF_DROP, log = 0, proto, i;
@@ -146,8 +146,8 @@ struct KernelResponse cmdAddRule() {
 
 
 // 修改过滤规则时的用户交互
-struct KernelResponse cmdChangeRule() {
-    struct KernelResponse empty = { .code = ERROR_CODE_EXIT };
+struct nfMessage change_rule() {
+    struct nfMessage empty = { .code = ERROR_CODE_EXIT };
     char name[MAX_RULENAME_LEN+1], saddr[25], daddr[25], sport[15], dport[15], protoS[6];
     unsigned short sportMin, sportMax, dportMin, dportMax;
     unsigned int action = NF_DROP, log = 0, proto, key = 0;
@@ -270,8 +270,8 @@ struct KernelResponse cmdChangeRule() {
 }
 
 
-struct KernelResponse cmdAddNATRule() {
-    struct KernelResponse empty = { .code = ERROR_CODE_EXIT };
+struct nfMessage cli_add_nat_rule() {
+    struct nfMessage empty = { .code = ERROR_CODE_EXIT };
     char saddr[25], daddr[25], port[15];
     unsigned short portMin, portMax;
 
@@ -335,41 +335,42 @@ struct KernelResponse cmdAddNATRule() {
         return empty;
     }
 
-    return addNATRule(saddr, daddr, portMin, portMax);
+    return add_nat_rule(saddr, daddr, portMin, portMax);
 }
 
 
-void wrongCommand() {
+void wrong_command() {
     printf("Invalid command.\n");
     printf("Usage: firewall <command> <sub-command> [options]\n");
     printf("Commands:\n");
     printf("  add    <rule | nat>                 Add a rule or NAT entry\n");
     printf("  delete <rule | nat>                 Delete a rule by name or NAT entry by number\n");
-    printf("  modify <rule>                       Modify an existing rule\n");
+    printf("  modify <rule | default>             Modify an existing rule or default action\n");
     printf("  ls     <rule | nat | log | connect> List rules, NAT entries, logs, or connections\n");
     printf("  save   <rule> <filename>            Save rules to a file\n");
     printf("  load   <rule> <filename>            Load rules from a file\n");
+    printf("  clear  rules                        Clear all the rules saved.\n");
     exit(0);
 }
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
-        wrongCommand();
+        wrong_command();
         return 0;
     }
 
-    struct KernelResponse rsp;
+    struct nfMessage rsp;
     rsp.code = ERROR_CODE_EXIT;
     const char *command = argv[1];
     const char *sub_command = argv[2];
 
     if (strcmp(command, "add") == 0) {
         if (strcmp(sub_command, "rule") == 0) {
-            rsp = cmdAddRule();
+            rsp = add_rule();
         } else if (strcmp(sub_command, "nat") == 0) {
-            rsp = cmdAddNATRule();
+            rsp = cli_add_nat_rule();
         } else {
-            wrongCommand();
+            wrong_command();
         }
     } else if (strcmp(command, "delete") == 0) {
         if (strcmp(sub_command, "rule") == 0) {
@@ -378,7 +379,7 @@ int main(int argc, char *argv[]) {
             } else if (strlen(argv[3]) > MAX_RULENAME_LEN) {
                 printf("Rule name too long!\n");
             } else {
-                rsp = delFilterRule(argv[3]);
+                rsp = del_rule(argv[3]);
             }
         } else if (strcmp(sub_command, "nat") == 0) {
             if (argc < 4) {
@@ -386,32 +387,40 @@ int main(int argc, char *argv[]) {
             } else {
                 int num;
                 sscanf(argv[3], "%d", &num);
-                rsp = delNATRule(num);
+                rsp = del_nat_rule(num);
             }
         } else {
-            wrongCommand();
+            wrong_command();
         }
     } else if (strcmp(command, "modify") == 0) {
         if (strcmp(sub_command, "rule") == 0) {
-            rsp = cmdChangeRule();
+            rsp = change_rule();
+        } else if (strcmp(sub_command, "default") == 0) {
+            printf("Set default action: 0 for DENY, 1 for ACCEPT");
+            unsigned int tmp_num = 100;
+            while(tmp_num != 0 && tmp_num != 1) {
+                printf("\nInput:");
+                scanf("%ud", &tmp_num);
+            }
+            rsp = set_default_action(tmp_num);
         } else {
-            wrongCommand();
+            wrong_command();
         }
     } else if (strcmp(command, "ls") == 0) {
         if (strcmp(sub_command, "rule") == 0) {
-            rsp = getAllFilterRules();
+            rsp = get_all_rules();
         } else if (strcmp(sub_command, "nat") == 0) {
-            rsp = getAllNATRules();
+            rsp = get_all_nat_rules();
         } else if (strcmp(sub_command, "log") == 0) {
             unsigned int num = 0;
             if (argc > 3) {
                 sscanf(argv[3], "%u", &num);
             }
-            rsp = getLogs(num);
+            rsp = get_logs(num);
         } else if (strcmp(sub_command, "connect") == 0) {
-            rsp = getAllConns();
+            rsp = get_connections();
         } else {
-            wrongCommand();
+            wrong_command();
         }
     } else if (strcmp(command, "save") == 0 || strcmp(command, "load") == 0) {
         if (argc < 4) {
@@ -419,15 +428,17 @@ int main(int argc, char *argv[]) {
         } else {
             const char *filename = argv[3];
             if (strcmp(command, "save") == 0 && strcmp(sub_command, "rule") == 0) {
-                rsp = saveRulesCommand(filename);
+                rsp = save_rules(filename);
             } else if (strcmp(command, "load") == 0 && strcmp(sub_command, "rule") == 0) {
-                rsp = loadRulesCommand(filename);
+                rsp = load_rules(filename);
             } else {
-                wrongCommand();
+                wrong_command();
             }
         }
+    } else if (strcmp(command, "clear") == 0) {
+        clear_rules();
     } else {
-        wrongCommand();
+        wrong_command();
     }
 
     dealResponseAtCmd(rsp);

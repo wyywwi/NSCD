@@ -19,6 +19,7 @@
 #define REQ_GETNATRules 9
 #define REQ_SAVEIPRule 10
 #define REQ_LOADIPRule 11
+#define REQ_CLEARIPRule 12
 
 #define RSP_Only_Head 20
 #define RSP_MSG 21
@@ -87,7 +88,7 @@ struct APPRequest {
     } msg;
 };
 
-struct KernelResponseHeader {
+struct nfMessageHeader {
     unsigned int bodyTp;
     unsigned int arrayLen;
 };
@@ -119,6 +120,7 @@ int delNATRuleFromChain(int num);
 void* formAllNATRules(unsigned int *len);
 int saveIPRule(const char *filename);
 int loadIPRule(const char *filename);
+void clearAllIPRules(void);
 
 
 // ----- netfilter相关 -----

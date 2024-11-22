@@ -88,7 +88,7 @@ int addLogBySKB(unsigned int action, struct sk_buff *skb) {
 
 // 将所有过滤日志形成Netlink回包
 void* formAllIPLogs(unsigned int num, unsigned int *len) {
-    struct KernelResponseHeader *head;
+    struct nfMessageHeader *head;
     struct IPLog *now;
     void *mem,*p;
     unsigned int count;
@@ -97,7 +97,7 @@ void* formAllIPLogs(unsigned int num, unsigned int *len) {
     printk("[firewall] [logs] Form logs: count=%d, need num=%d.\n", count, num);
     if(num == 0 || num > count)
         num = count;
-    *len = sizeof(struct KernelResponseHeader) + sizeof(struct IPLog) * num; // 申请回包空间
+    *len = sizeof(struct nfMessageHeader) + sizeof(struct IPLog) * num; // 申请回包空间
     mem = kzalloc(*len, GFP_ATOMIC);
     if(mem == NULL) {
         printk(KERN_WARNING "[firewall] [logs] kzalloc fail when formAllIPLogs.\n");
@@ -105,10 +105,10 @@ void* formAllIPLogs(unsigned int num, unsigned int *len) {
         return NULL;
     }
     // 构建回包
-    head = (struct KernelResponseHeader *)mem;
+    head = (struct nfMessageHeader *)mem;
     head->bodyTp = RSP_IPLogs;
     head->arrayLen = num;
-    p=(mem + sizeof(struct KernelResponseHeader));
+    p=(mem + sizeof(struct nfMessageHeader));
     for(now=logHead;now!=NULL;now=now->nx) {
         if(count > num) { // 只取最后num个日志
             count--;

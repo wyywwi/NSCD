@@ -29,6 +29,7 @@
 #define REQ_GETNATRules 9
 #define REQ_SAVEIPRule 10
 #define REQ_LOADIPRule 11
+#define REQ_CLEARIPRule 12
 
 #define RSP_Only_Head 20
 #define RSP_MSG 21
@@ -97,7 +98,7 @@ struct APPRequest {
     } msg;
 };
 
-struct KernelResponseHeader {
+struct nfMessageHeader {
     unsigned int bodyTp;
     unsigned int arrayLen;
 };
@@ -120,10 +121,10 @@ struct KernelResponseHeader {
 /** 
  * @brief 内核回应包
  */
-struct KernelResponse {
+struct nfMessage {
     int code; // <0 代表请求失败，失败码; >=0 代表body长度
     void *data; // 回应包指针，记得free
-    struct KernelResponseHeader *header; // 不要free；指向data中的头部
+    struct nfMessageHeader *header; // 不要free；指向data中的头部
     void *body; // 不要free；指向data中的Body
 };
 
@@ -131,24 +132,25 @@ struct KernelResponse {
  * @brief 与内核交换数据
  * @param smsg: 发送的消息
  * @param slen: 发送消息的长度
- * @return KernelResponse: 接收到的回应，其中data字段记得free
+ * @return nfMessage: 接收到的回应，其中data字段记得free
  */
-struct KernelResponse exchangeMsgK(void *smsg, unsigned int slen);
+struct nfMessage exchangeMsgK(void *smsg, unsigned int slen);
 
 // ----- 与内核交互函数 -----
 
-struct KernelResponse addFilterRule(char *after,char *name,char *sip,char *dip,unsigned int sport,unsigned int dport,u_int8_t proto,unsigned int log,unsigned int action); // 新增一条过滤规则，其中，sport/dport为端口范围：高2字节为最小 低2字节为最大
-struct KernelResponse changeFilterRule(int key,char *name,char *sip,char *dip,unsigned int sport,unsigned int dport,u_int8_t proto,unsigned int log,unsigned int action); // 修改一条过滤规则，其中，sport/dport为端口范围：高2字节为最小 低2字节为最大
-struct KernelResponse delFilterRule(char *name);
-struct KernelResponse getAllFilterRules(void);
-struct KernelResponse addNATRule(char *sip,char *natIP,unsigned short minport,unsigned short maxport);
-struct KernelResponse delNATRule(int num);
-struct KernelResponse getAllNATRules(void);
-struct KernelResponse setDefaultAction(unsigned int action);
-struct KernelResponse getLogs(unsigned int num); // num=0时，获取所有日志
-struct KernelResponse getAllConns(void);
-struct KernelResponse saveRulesCommand(const char* filename);
-struct KernelResponse loadRulesCommand(const char* filename);
+struct nfMessage addFilterRule(char *after,char *name,char *sip,char *dip,unsigned int sport,unsigned int dport,u_int8_t proto,unsigned int log,unsigned int action); // 新增一条过滤规则，其中，sport/dport为端口范围：高2字节为最小 低2字节为最大
+struct nfMessage changeFilterRule(int key,char *name,char *sip,char *dip,unsigned int sport,unsigned int dport,u_int8_t proto,unsigned int log,unsigned int action); // 修改一条过滤规则，其中，sport/dport为端口范围：高2字节为最小 低2字节为最大
+struct nfMessage del_rule(char *name);
+struct nfMessage get_all_rules(void);
+struct nfMessage add_nat_rule(char *sip,char *natIP,unsigned short minport,unsigned short maxport);
+struct nfMessage del_nat_rule(int num);
+struct nfMessage get_all_nat_rules(void);
+struct nfMessage set_default_action(unsigned int action);
+struct nfMessage get_logs(unsigned int num); // num=0时，获取所有日志
+struct nfMessage get_connections(void);
+struct nfMessage save_rules(const char* filename);
+struct nfMessage load_rules(const char* filename);
+struct nfMessage clear_rules(void);
 
 // ----- 一些工具函数 ------
 

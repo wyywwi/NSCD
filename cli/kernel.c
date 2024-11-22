@@ -5,7 +5,7 @@ int showNATRules(struct NATRecord *rules, int len);
 int showLogs(struct IPLog *logs, int len);
 int showConns(struct ConnLog *logs, int len);
 
-void dealResponseAtCmd(struct KernelResponse rsp) {
+void dealResponseAtCmd(struct nfMessage rsp) {
 	// 判断错误码
 	switch (rsp.code) {
 	case ERROR_CODE_EXIT:

@@ -3,6 +3,6 @@
 
 #include "common.h"
 
-void dealResponseAtCmd(struct KernelResponse rsp);
+void dealResponseAtCmd(struct nfMessage rsp);
 
 #endif

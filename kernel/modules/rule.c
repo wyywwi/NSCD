@@ -106,23 +106,23 @@ int delIPRuleFromChain(char name[]) {
 
 // 将所有规则形成Netlink回包
 void* formAllIPRules(unsigned int *len) {
-    struct KernelResponseHeader *head;
+    struct nfMessageHeader *head;
     struct IPRule *now;
     void *mem,*p;
     unsigned int count;
     read_lock(&ipRuleLock);
     for(now=ipRuleHead,count=0;now!=NULL;now=now->nx,count++);
-    *len = sizeof(struct KernelResponseHeader) + sizeof(struct IPRule)*count;
+    *len = sizeof(struct nfMessageHeader) + sizeof(struct IPRule)*count;
     mem = kzalloc(*len, GFP_ATOMIC);
     if(mem == NULL) {
         printk(KERN_WARNING "[firewall] [rules] kzalloc fail.\n");
         read_unlock(&ipRuleLock);
         return NULL;
     }
-    head = (struct KernelResponseHeader *)mem;
+    head = (struct nfMessageHeader *)mem;
     head->bodyTp = RSP_IPRules;
     head->arrayLen = count;
-    for(now=ipRuleHead,p=(mem + sizeof(struct KernelResponseHeader));now!=NULL;now=now->nx,p=p+sizeof(struct IPRule))
+    for(now=ipRuleHead,p=(mem + sizeof(struct nfMessageHeader));now!=NULL;now=now->nx,p=p+sizeof(struct IPRule))
         memcpy(p, now, sizeof(struct IPRule));
     read_unlock(&ipRuleLock);
     return mem;

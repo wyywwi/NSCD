@@ -1,11 +1,11 @@
 #include "common.h"
 
 //
-struct KernelResponse exchangeMsgK(void *smsg, unsigned int slen)
+struct nfMessage exchangeMsgK(void *smsg, unsigned int slen)
 {
 	struct sockaddr_nl local;
 	struct sockaddr_nl kpeer;
-	struct KernelResponse rsp;
+	struct nfMessage rsp;
 	int dlen, kpeerlen = sizeof(struct sockaddr_nl); 
 	// init socket - skfd
 	int skfd = socket(PF_NETLINK, SOCK_RAW, NETLINK_MYFW);
@@ -89,13 +89,13 @@ struct KernelResponse exchangeMsgK(void *smsg, unsigned int slen)
 	}
 	memset(rsp.data, 0, dlen);
 	memcpy(rsp.data, NLMSG_DATA(nlh), dlen);
-	rsp.code = dlen - sizeof(struct KernelResponseHeader);
+	rsp.code = dlen - sizeof(struct nfMessageHeader);
 	if (rsp.code < 0)
 	{
 		rsp.code = ERROR_CODE_EXCHANGE;
 	}
-	rsp.header = (struct KernelResponseHeader *)rsp.data;
-	rsp.body = rsp.data + sizeof(struct KernelResponseHeader);
+	rsp.header = (struct nfMessageHeader *)rsp.data;
+	rsp.body = rsp.data + sizeof(struct nfMessageHeader);
 	// over
 	close(skfd);
 	free(message);
