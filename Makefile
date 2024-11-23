@@ -3,6 +3,10 @@ DOCKER_CONTAINER_NAME=firewall_test_container
 MODULE_NAME=firewall.ko
 SCRIPT=test_firewall.sh
 
+BRIDGE_NETWORK=172.17.0.0/16
+LOCAL_IP=192.168.0.109
+EXTERNAL_IP=1.94.3.9
+
 .PHONY: all install clean setup load_module run_test cleanup
 
 # 默认目标，执行全部步骤：编译 -> 环境设置 -> 模块加载 -> 测试运行 -> 清理

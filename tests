@@ -1,0 +1,133 @@
+# 查看目标
+./firewall
+
+# 规则过滤：添加规则，查看规则，按照规则过滤报文，查看日志
+# 添加 ICMP 规则，禁止外网 IP 向内网 IP 的 ICMP 连接；采用 ping 测试，查看结果
+{
+  echo ""
+  echo "E_ICMP"
+  echo "1.94.3.9/32"
+  echo "192.168.0.109/32"
+  echo "any"
+  echo "any"
+  echo "ICMP"
+  echo "0"
+  echo "1"
+  echo "yes"
+} | ./firewall add rule
+./firewall ls rule
+ping -c 5 -i 0.5 -W 1 1.94.3.9
+
+./firewall ls log | grep 'DROP'
+
+# 添加，删除，修改，查看规则
+# 添加 TCP 规则，禁止 docker 容器向主机 IP 的 TCP 连接
+{
+  echo "E_ICMP"
+  echo "E_TCP"
+  echo "172.17.0.2/32"
+  echo "172.17.0.1/32"
+  echo "any"
+  echo "8080-8080"
+  echo "TCP"
+  echo "0"
+  echo "1"
+  echo "yes"
+} | ./firewall add rule
+
+# 列出规则表，删除上一条 ICMP 相关连接
+# 再次查看规则表，采用 hping3 发送 SYN 包测试本条 TCP 规则
+./firewall ls rule
+./firewall delete rule E_ICMP
+./firewall ls rule
+sudo docker exec -it firewall_test_container hping3 -c 5 -S -p 8080 172.17.0.1
+
+# 全部 SYN 包 被 DROP
+./firewall ls log | grep 'DROP' | grep '172.17.0.2'
+
+# 测试规则修改，将 docker 容器向主机 IP 的 TCP 连接规则修改为允许连接，再次进行测试
+{
+  echo "1"
+  echo ""
+  echo ""
+  echo ""
+  echo ""
+  echo ""
+  echo ""
+  echo "1"
+  echo "1"
+  echo "yes"
+} | ./firewall modify rule
+sudo docker exec -it firewall_test_container hping3 -c 5 -S -p 8080 172.17.0.1
+
+# SYN 包成功通过
+./firewall ls log | grep 'ACCEPT' | grep '172.17.0.2'
+
+# 保存，加载规则
+# 采用 save rule 命令保存规则到指定文件，并查看文件内容
+./firewall save rule "/home/wawei/codes/NSCD2/firewall_rules.txt"
+ls -l | grep firewall_rules.txt
+cat firewall_rules.txt
+
+# 删除当前所有规则
+./firewall clear rules
+./firewall ls rule
+
+# 从文件加载刚刚保存的规则并列出
+./firewall load rule "/home/wawei/codes/NSCD2/firewall_rules.txt"
+./firewall ls rule
+
+# 默认动作测试
+# 将默认动作设置为 DROP，通过 docker 容器向主机 IP 9090 端口 发送 SYN 包的未定义行为进行测试
+{
+    echo "0"
+} | ./firewall modify default
+sudo docker exec -it firewall_test_container hping3 -c 5 -S -p 9090 172.17.0.1
+
+# 所有 SYN 包被 DROP
+./firewall ls log | grep 'DROP' | grep '9090'
+
+# 重新设置为 ACCEPT，再次测试
+{
+    echo "1"
+} | ./firewall modify default
+sudo docker exec -it firewall_test_container hping3 -c 5 -S -p 9090 172.17.0.1
+
+# 第二次测试的 SYN 包被 ACCEPT
+./firewall ls log | grep 'ACCEPT' | grep '9090'
+
+# 连接管理
+# 建立与 docker 容器的 ICMP 和 TCP 连接，列出连接表并筛选，看到相关连接
+ping -c 1 -i 0.2 -W 1 172.17.0.2
+sudo docker exec -it firewall_test_container hping3 -c 1 -S -p 8080 172.17.0.1
+./firewall ls connect | grep 172.17.0.2
+
+# 等待 5 秒钟，再次列出连接表，相关连接超时被清除
+./firewall ls connect
+
+# 状态检测：见代码中 update_tcp_state 部分，采用常量定义状态，不同状态相互转移
+
+# 日志查询
+# 列出 firewall 的数据包日志和管理日志，管理日志包含报错，操作记录等信息
+./firewall ls log
+sudo dmesg | tail -n 25 | grep firewall
+
+# NAT
+# 建立 docker 容器映射到 docker 网关（本机 internal IP）的 NAT 映射
+# 采用 docker 容器 向 外网主机 发送 SYN 包进行测试
+# 可以在连接表中看到 NAT 信息
+{
+  echo "172.17.0.2/32"
+  echo "172.17.0.1"
+  echo "any"
+  echo "yes"
+} | ./firewall add nat
+./firewall ls nat
+sudo docker exec -it firewall_test_container hping3 -c 1 -S -p 8080 1.94.3.9
+./firewall ls connect
+
+# 界面展示
+./firewall
+
+# 卸载模块，清除测试容器
+sudo make cleanup

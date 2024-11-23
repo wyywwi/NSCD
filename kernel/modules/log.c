@@ -79,7 +79,8 @@ int addLogBySKB(unsigned int action, struct sk_buff *skb) {
     log.daddr = ntohl(header->daddr);
     log.sport = sport;
     log.dport = dport;
-    log.len = header->tot_len - (header->ihl * 4);
+    log.len = ntohs(header->tot_len) - (header->ihl * 4);
+    // printk("[firewall] [warn] addlog: header->tot_len = %u header->ihl = %u log.len = %u\n", header->tot_len, header->ihl, log.len);
     log.protocol = header->protocol;
     log.action = action;
     log.nx = NULL;

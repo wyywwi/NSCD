@@ -14,7 +14,7 @@ LOCAL_IP="192.168.0.109"
 INTERNAL_IP="172.17.0.1"
 EXTERNAL_IP="1.94.3.9"
 TEST_PORT=8080
-RULE_FILE="/home/wawei/firewall_rules.txt"
+RULE_FILE="/home/wawei/codes/NSCD2/firewall_rules.txt"
 
 echo -e "\n********* 测试 1：按照五元组过滤数据包 *********\n"
 
@@ -100,7 +100,7 @@ fi
 pause
 
 # 模拟 TCP 流量测试 DROP
-echo "==> 模拟 TCP 流量测试 DROP..."
+echo "==> 模拟 TCP 流量测试添加的规则..."
 set -x
 sudo docker exec -it firewall_test_container hping3 -c 5 -S -p $TEST_PORT $INTERNAL_IP > /dev/null 2>&1
 set +x
@@ -145,6 +145,14 @@ if ./firewall ls rule | grep "E_TCP" | grep "ACCEPT"; then
 else
     echo "==> 未找到修改后的规则 'E_TCP'。"
 fi
+
+pause
+
+# 模拟 TCP 流量测试 ACCEPT
+echo "==> 模拟 TCP 流量测试添加的规则..."
+set -x
+sudo docker exec -it firewall_test_container hping3 -c 5 -S -p $TEST_PORT $INTERNAL_IP > /dev/null 2>&1
+set +x
 
 pause
 
@@ -424,103 +432,16 @@ set +x
 
 echo -e "\n********* 测试 7：NAT 转换 *********\n"
 
-# 添加源 NAT（SNAT）规则：将 CONTAINER_IP 转换为 INTERNAL_IP
-echo "==> 添加源 NAT（SNAT）规则：将源地址 ${CONTAINER_IP} 转换为 ${INTERNAL_IP}"
+# 添加NAT规则：将 CONTAINER_IP 转换为 LOCAL_IP
+echo "==> 添加NAT规则：将源地址 ${CONTAINER_IP} 转换为 ${LOCAL_IP}"
 set -x
 {
-  echo ""
-  echo "SNAT_TEST"
   echo "$CONTAINER_IP/32"  # 源 IP
-  echo ""                  # 目标 IP
+  echo "$LOCAL_IP"      # 网关 IP
   echo "any"               # 源端口范围
-  echo "any"               # 目标端口范围
-  echo "SNAT"              # 类型：SNAT
-  echo "$INTERNAL_IP"      # 转换后的源地址
   echo "yes"               # 确认添加
 } | ./firewall add nat
 set +x
-
-# 确认 NAT 规则已添加
-echo -e "\n--------------------------------------------"
-echo "确认 NAT 规则已添加："
-echo "./firewall ls nat | grep 'SNAT_TEST'"
-echo -e "--------------------------------------------\n"
-if ./firewall ls nat | grep "SNAT_TEST"; then
-    echo "==> SNAT 规则 'SNAT_TEST' 已添加。"
-else
-    echo "==> 未找到 NAT 规则 'SNAT_TEST'。"
-    exit 1
-fi
-
-pause
-
-# 模拟流量以触发 SNAT
-echo "==> 模拟来自 ${CONTAINER_IP} 的 TCP 流量，目标端口 ${TEST_PORT}"
-set -x
-sudo docker exec -it firewall_test_container hping3 -S -p $TEST_PORT -c 1 $LOCAL_IP > /dev/null 2>&1
-set +x
-
-# 检查 NAT 日志记录
-echo -e "\n--------------------------------------------"
-echo "检查 NAT 日志记录（SNAT）："
-echo "./firewall ls log | grep 'SNAT' | grep '${CONTAINER_IP}' | grep '${INTERNAL_IP}'"
-echo -e "--------------------------------------------\n"
-if ./firewall ls log | grep "SNAT" | grep "$CONTAINER_IP" | grep "$INTERNAL_IP"; then
-    echo "==> NAT 日志记录 SNAT 转换成功。"
-else
-    echo "==> 未找到 NAT 日志记录，请检查 SNAT 功能。"
-fi
-
-pause
-
-# 添加目标 NAT（DNAT）规则：将目标地址 LOCAL_IP 转换为 INTERNAL_IP
-echo "==> 添加目标 NAT（DNAT）规则：将目标地址 ${LOCAL_IP} 转换为 ${INTERNAL_IP}"
-set -x
-{
-  echo ""
-  echo "DNAT_TEST"
-  echo ""                  # 源 IP
-  echo "$LOCAL_IP/32"      # 目标 IP
-  echo "any"               # 源端口范围
-  echo "any"               # 目标端口范围
-  echo "DNAT"              # 类型：DNAT
-  echo "$INTERNAL_IP"      # 转换后的目标地址
-  echo "yes"               # 确认添加
-} | ./firewall add nat
-set +x
-
-# 确认 NAT 规则已添加
-echo -e "\n--------------------------------------------"
-echo "确认 NAT 规则已添加："
-echo "./firewall ls nat | grep 'DNAT_TEST'"
-echo -e "--------------------------------------------\n"
-if ./firewall ls nat | grep "DNAT_TEST"; then
-    echo "==> DNAT 规则 'DNAT_TEST' 已添加。"
-else
-    echo "==> 未找到 NAT 规则 'DNAT_TEST'。"
-    exit 1
-fi
-
-pause
-
-# 模拟流量以触发 DNAT
-echo "==> 模拟来自 ${CONTAINER_IP} 的 TCP 流量，目标地址 ${LOCAL_IP}"
-set -x
-sudo docker exec -it firewall_test_container hping3 -S -p $TEST_PORT -c 1 $LOCAL_IP > /dev/null 2>&1
-set +x
-
-# 检查 NAT 日志记录
-echo -e "\n--------------------------------------------"
-echo "检查 NAT 日志记录（DNAT）："
-echo "./firewall ls log | grep 'DNAT' | grep '${LOCAL_IP}' | grep '${INTERNAL_IP}'"
-echo -e "--------------------------------------------\n"
-if ./firewall ls log | grep "DNAT" | grep "$LOCAL_IP" | grep "$INTERNAL_IP"; then
-    echo "==> NAT 日志记录 DNAT 转换成功。"
-else
-    echo "==> 未找到 NAT 日志记录，请检查 DNAT 功能。"
-fi
-
-pause
 
 # 查看 NAT 表信息
 echo "==> 查看 NAT 表信息..."
@@ -528,25 +449,18 @@ set -x
 ./firewall ls nat
 set +x
 
-pause
 
-# 删除 NAT 规则并验证
-echo "==> 删除 NAT 规则：SNAT_TEST 和 DNAT_TEST"
+# 模拟流量以触发 SNAT
+echo "==> 模拟来自 ${CONTAINER_IP} 针对 外网IP ${EXTERNAL_IP}的 TCP 流量，目标端口 ${TEST_PORT}"
 set -x
-./firewall delete nat "SNAT_TEST"
-./firewall delete nat "DNAT_TEST"
+sudo docker exec -it firewall_test_container hping3 -S -p $TEST_PORT -c 1 $EXTERNAL_IP > /dev/null 2>&1
 set +x
 
-# 确认 NAT 规则已删除
-echo -e "\n--------------------------------------------"
-echo "确认 NAT 规则已删除："
-echo "./firewall ls nat"
-echo -e "--------------------------------------------\n"
-if ! ./firewall ls nat | grep "SNAT_TEST" && ! ./firewall ls nat | grep "DNAT_TEST"; then
-    echo "==> NAT 规则已成功删除。"
-else
-    echo "==> NAT 规则删除失败，请检查删除功能。"
-fi
+# 查看 log 记录
+echo "==> 查看 log 记录"
+set -x
+./firewall ls log | grep "$CONTAINER_IP"
+set +x
 
 pause
 

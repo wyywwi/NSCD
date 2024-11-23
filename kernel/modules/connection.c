@@ -96,10 +96,18 @@ void addConnExpires(struct connNode *node, unsigned int plus) {
 struct connNode *hasConn(unsigned int sip, unsigned int dip, unsigned short sport, unsigned short dport) {
 	conn_key_t key;
 	struct connNode *node = NULL;
-	// 构建标识符
-	key[0] = sip;
-	key[1] = dip;
-	key[2] = ((((unsigned int)sport) << 16) | ((unsigned int)dport));
+
+    // 构建标准化标识符
+    if (sip < dip || (sip == dip && sport < dport)) {
+        key[0] = sip;
+        key[1] = dip;
+        key[2] = ((((unsigned int)sport) << 16) | ((unsigned int)dport));
+    } else {
+        key[0] = dip;
+        key[1] = sip;
+        key[2] = ((((unsigned int)dport) << 16) | ((unsigned int)sport));
+    }
+
 	// 查找节点
 	node = searchNode(&connRoot, key);
 	addConnExpires(node, CONN_EXPIRES); // 重新设置超时时间
@@ -110,6 +118,19 @@ struct connNode *hasConn(unsigned int sip, unsigned int dip, unsigned short spor
 struct connNode *addConn(unsigned int sip, unsigned int dip, unsigned short sport, unsigned short dport, u_int8_t proto, u_int8_t log) {
 	// 初始化
 	struct connNode *node = (struct connNode *)kzalloc(sizeof(connNode), GFP_ATOMIC);
+
+	// 构建标准化标识符
+	conn_key_t key;
+    if (sip < dip || (sip == dip && sport < dport)) {
+        key[0] = sip;
+        key[1] = dip;
+        key[2] = ((((unsigned int)sport) << 16) | ((unsigned int)dport));
+    } else {
+        key[0] = dip;
+        key[1] = sip;
+        key[2] = ((((unsigned int)dport) << 16) | ((unsigned int)sport));
+    }
+
 	if(node == NULL) {
 		printk(KERN_WARNING "[firewall] [connections] Add Connection kzalloc fail.\n");
 		return 0;
@@ -119,9 +140,9 @@ struct connNode *addConn(unsigned int sip, unsigned int dip, unsigned short spor
 	node->expires = timeFromNow(CONN_EXPIRES); // 设置超时时间
 	node->natType = NAT_TYPE_NO;
 	// 构建标识符
-	node->key[0] = sip;
-	node->key[1] = dip;
-	node->key[2] = ((((unsigned int)sport) << 16) | ((unsigned int)dport));
+    node->key[0] = key[0];
+    node->key[1] = key[1];
+    node->key[2] = key[2];
 	// 插入节点
 	return insertNode(&connRoot, node);
 }
